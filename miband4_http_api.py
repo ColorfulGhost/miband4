@@ -1,3 +1,5 @@
+import time
+
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 
@@ -76,37 +78,36 @@ if AUTH_KEY:
 
 class MiBand4_Http_Api(Resource):
     def get(self):
-        global band
-        result = ''
+        attempts = 0
         success = False
-        while not success:
+        while attempts < 2 and not success:
             try:
                 if (AUTH_KEY):
                     band = miband(MAC_ADDR, AUTH_KEY, debug=True)
                     success = band.initialize()
-                else:
-                    band = miband(MAC_ADDR, debug=True)
-                    success = True
-                break
-            except BTLEDisconnectError:
-                result = '主人不在家，无法捕获身体数据(?д?；)'
-                return result, 200
+                    binfo = band.get_steps()
 
-        if success:
-            binfo = band.get_steps()
-            result += '截止当前: ' + binfo['steps'] + '步'
-            result += '消耗: ' + binfo['fat_burned'] + 'Cal'
-            result += '今日移动距离: ' + binfo['meters'] + 'M'
-            return result, 200
+                    result = '截止当前运动: ' + str(binfo['steps']) + '步\n'
+                    result += '消耗: ' + str(binfo['calories']) + 'Cal\n'
+                    result += '今日移动距离: ' + str(binfo['meters']) + 'M\n'
+                    print(result)
+                    return result, 200
+
+            except BTLEDisconnectError:
+                print("连接失败重试中...")
+                time.sleep(3)
+                attempts += 1
+                if attempts == 3:
+                    return '主人不在家，无法捕获身体数据..(｡•ˇ‸ˇ•｡)…', 200
 
 
 if __name__ == '__main__':
     app = Flask(__name__)
+    app.config.update(RESTFUL_JSON=dict(ensure_ascii=False))
     api = Api(app)
-
     api.add_resource(MiBand4_Http_Api, "/getMiBandStat")
 
     app.run(
         host='0.0.0.0',
-        port=88,
+        port=90,
         debug=True)
