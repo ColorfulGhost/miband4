@@ -78,27 +78,23 @@ if AUTH_KEY:
 
 class MiBand4_Http_Api(Resource):
     def get(self):
-        attempts = 0
         success = False
-        while attempts < 2 and not success:
+        attempts = 0
+        while attempts < 3 and not success:
             try:
                 if (AUTH_KEY):
                     band = miband(MAC_ADDR, AUTH_KEY, debug=True)
                     success = band.initialize()
-                    binfo = band.get_steps()
-
-                    result = '截止当前运动: ' + str(binfo['steps']) + '步\n'
-                    result += '消耗: ' + str(binfo['calories']) + 'Cal\n'
-                    result += '今日移动距离: ' + str(binfo['meters']) + 'M\n'
-                    print(result)
-                    return result, 200
-
+                    steps = band.get_steps()
+                    band.disconnect()
+                    return steps, 200
             except BTLEDisconnectError:
-                print("连接失败重试中...")
-                time.sleep(3)
                 attempts += 1
                 if attempts == 3:
-                    return '主人不在家，无法捕获身体数据..(｡•ˇ‸ˇ•｡)…', 200
+                    return 'Connection to the MIBand failed', 500
+                print('Connection to the MIBand failed. Trying out again in 3 seconds')
+                time.sleep(3)
+                continue
 
 
 if __name__ == '__main__':

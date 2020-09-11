@@ -1,11 +1,12 @@
-import sys,os,time
+import sys, os, time
 import logging
-from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM,ADDR_TYPE_PUBLIC, BTLEException
+from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, ADDR_TYPE_PUBLIC, BTLEException
 from constants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES, MUSICSTATE
 import struct
 from datetime import datetime, timedelta
 from Crypto.Cipher import AES
 from datetime import datetime
+
 try:
     from Queue import Queue, Empty
 except ImportError:
@@ -59,7 +60,7 @@ class Delegate(DefaultDelegate):
                 minute = struct.unpack("b", data[12:13])[0]
                 self.device.first_timestamp = datetime(year, month, day, hour, minute)
                 print("Fetch data from {}-{}-{} {}:{}".format(year, month, day, hour, minute))
-                self.pkg = 0 #reset the packing index
+                self.pkg = 0  # reset the packing index
                 self.device._char_fetch.write(b'\x02', False)
             elif data[:3] == b'\x10\x02\x01':
                 if self.device.last_timestamp > self.device.end_timestamp - timedelta(minutes=1):
@@ -89,53 +90,54 @@ class Delegate(DefaultDelegate):
                     steps = struct.unpack("B", data[i + 2:i + 3])[0]
                     heart_rate = struct.unpack("B", data[i + 3:i + 4])[0]
                     if timestamp < self.device.end_timestamp:
-                        self.device.activity_callback(timestamp,category,intensity,steps,heart_rate)
+                        self.device.activity_callback(timestamp, category, intensity, steps, heart_rate)
                     i += 4
 
-        #music controls
-        elif(hnd == 74):
-            if(data[1:] == b'\xe0'):
+        # music controls
+        elif (hnd == 74):
+            if (data[1:] == b'\xe0'):
                 self.device.setMusic()
-                if(self.device._default_music_focus_in):
+                if (self.device._default_music_focus_in):
                     self.device._default_music_focus_in()
-            elif(data[1:]==b'\xe1'):
-                if(self.device._default_music_focus_out):
+            elif (data[1:] == b'\xe1'):
+                if (self.device._default_music_focus_out):
                     self.device._default_music_focus_out()
-            elif(data[1:]==b'\x00'):
-                if(self.device._default_music_play):
+            elif (data[1:] == b'\x00'):
+                if (self.device._default_music_play):
                     self.device._default_music_play()
-            elif(data[1:]==b'\x01'):
-                if(self.device._default_music_pause):
+            elif (data[1:] == b'\x01'):
+                if (self.device._default_music_pause):
                     self.device._default_music_pause()
-            elif(data[1:]==b'\x03'):
-                if(self.device._default_music_forward):
+            elif (data[1:] == b'\x03'):
+                if (self.device._default_music_forward):
                     self.device._default_music_forward()
-            elif(data[1:]==b'\x04'):
-                if(self.device._default_music_back):
+            elif (data[1:] == b'\x04'):
+                if (self.device._default_music_back):
                     self.device._default_music_back()
-            elif(data[1:]==b'\x05'):
-                if(self.device._default_music_vup):
+            elif (data[1:] == b'\x05'):
+                if (self.device._default_music_vup):
                     self.device._default_music_vup()
-            elif(data[1:]==b'\x06'):
-                if(self.device._default_music_vdown):
+            elif (data[1:] == b'\x06'):
+                if (self.device._default_music_vdown):
                     self.device._default_music_vdown()
+
 
 class miband(Peripheral):
     _send_rnd_cmd = struct.pack('<2s', b'\x02\x00')
     _send_enc_key = struct.pack('<2s', b'\x03\x00')
-    def __init__(self, mac_address,key=None, timeout=0.5, debug=False):
+
+    def __init__(self, mac_address, key=None, timeout=0.5, debug=False):
         FORMAT = '%(asctime)-15s %(name)s (%(levelname)s) > %(message)s'
         logging.basicConfig(format=FORMAT)
         log_level = logging.WARNING if not debug else logging.DEBUG
         self._log = logging.getLogger(self.__class__.__name__)
         self._log.setLevel(log_level)
 
-
         self._log.info('Connecting to ' + mac_address)
         Peripheral.__init__(self, mac_address, addrType=ADDR_TYPE_PUBLIC)
         self._log.info('Connected')
         if not key:
-            self.setSecurityLevel(level = "medium")
+            self.setSecurityLevel(level="medium")
         self.timeout = timeout
         self.mac_address = mac_address
         self.state = None
@@ -160,19 +162,23 @@ class miband(Peripheral):
         self._char_activity = self.getCharacteristics(uuid=UUIDS.CHARACTERISTIC_ACTIVITY_DATA)[0]
         self._desc_activity = self._char_activity.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
 
-        #chunked transfer and music
+        # chunked transfer and music
         self._char_chunked = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_CHUNKED_TRANSFER)[0]
-        self._char_music_notif= self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_MUSIC_NOTIFICATION)[0]
+        self._char_music_notif = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_MUSIC_NOTIFICATION)[0]
         self._desc_music_notif = self._char_music_notif.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
 
         self._auth_notif(True)
         self.enable_music()
         self.activity_notif_enabled = False
         self.waitForNotifications(0.1)
-        self.setDelegate( Delegate(self) )
+        self.setDelegate(Delegate(self))
+
+    def disconnect(self):
+        Peripheral.disconnect(self)
+
     def generateAuthKey(self):
-        if(self.authKey):
-            return struct.pack('<18s',b'\x01\x00'+ self.auth_key)
+        if (self.authKey):
+            return struct.pack('<18s', b'\x01\x00' + self.auth_key)
 
     def _send_key(self):
         self._log.info("Sending Key...")
@@ -264,10 +270,10 @@ class miband(Peripheral):
         elif type == 4:
             base_value = '\x04\x01'
         elif type == 3:
-                base_value = '\x03\x01'
+            base_value = '\x03\x01'
         svc = self.getServiceByUUID(UUIDS.SERVICE_ALERT_NOTIFICATION)
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CUSTOM_ALERT)[0]
-        char.write(bytes(base_value+phone,'utf-8'), withResponse=True)
+        char.write(bytes(base_value + phone, 'utf-8'), withResponse=True)
 
     def get_steps(self):
         char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_STEPS)[0]
@@ -283,6 +289,7 @@ class miband(Peripheral):
             "fat_burned": fat_burned,
             "calories": calories
         }
+
     def _parse_raw_accel(self, bytes):
         res = []
         for i in xrange(3):
@@ -305,11 +312,13 @@ class miband(Peripheral):
         day_of_week = struct.unpack('b', bytes[7:8])[0] if len(bytes) >= 8 else None
         fractions256 = struct.unpack('b', bytes[8:9])[0] if len(bytes) >= 9 else None
 
-        return {"date": datetime(*(year, month, day, hours, minutes, seconds)), "day_of_week": day_of_week, "fractions256": fractions256}
+        return {"date": datetime(*(year, month, day, hours, minutes, seconds)), "day_of_week": day_of_week,
+                "fractions256": fractions256}
 
     @staticmethod
     def create_date_data(date):
-        data = struct.pack( 'hbbbbbbbxx', date.year, date.month, date.day, date.hour, date.minute, date.second, date.weekday(), 0 )
+        data = struct.pack('hbbbbbbbxx', date.year, date.month, date.day, date.hour, date.minute, date.second,
+                           date.weekday(), 0)
         return data
 
     def _parse_battery_response(self, bytes):
@@ -380,7 +389,6 @@ class miband(Peripheral):
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_ALERT)[0]
         char.write(_type)
 
-
     def set_current_time(self, date):
         char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_CURRENT_TIME)[0]
         return char.write(self.create_date_data(date), True)
@@ -405,14 +413,14 @@ class miband(Peripheral):
         extension = os.path.splitext(fileName)[1][1:]
         fileSize = os.path.getsize(fileName)
         # calculating crc checksum of firmware
-        #crc16
+        # crc16
         crc = 0xFFFF
         with open(fileName) as f:
             while True:
                 c = f.read(1)
                 if not c:
                     break
-                cInt = int(c.encode('hex'), 16) #converting hex to int
+                cInt = int(c.encode('hex'), 16)  # converting hex to int
                 # now calculate crc
                 crc = ((crc >> 8) | (crc << 8)) & 0xFFFF
                 crc ^= (cInt & 0xff)
@@ -424,24 +432,24 @@ class miband(Peripheral):
         input('Press Enter to Continue')
         if extension.lower() == "res":
             # file size hex value is
-            char.write(b'\x01'+ struct.pack("<i", fileSize)[:-1] + b'\x02', withResponse=True)
+            char.write(b'\x01' + struct.pack("<i", fileSize)[:-1] + b'\x02', withResponse=True)
         elif extension.lower() == "fw":
             char.write(b'\x01' + struct.pack("<i", fileSize)[:-1], withResponse=True)
         char.write(b'\x03', withResponse=True)
         char1 = svc.getCharacteristics(UUIDS.CHARACTERISTIC_DFU_FIRMWARE_WRITE)[0]
         with open(fileName) as f:
-          while True:
-            c = f.read(20) #takes 20 bytes :D
-            if not c:
-              print ("Update Over")
-              break
-            print('Writing Resource', c.encode('hex'))
-            char1.write(c)
+            while True:
+                c = f.read(20)  # takes 20 bytes :D
+                if not c:
+                    print("Update Over")
+                    break
+                print('Writing Resource', c.encode('hex'))
+                char1.write(c)
         # after update is done send these values
         char.write(b'\x00', withResponse=True)
         self.waitForNotifications(0.5)
         print('CheckSum is --> ', hex(crc & 0xFF), hex((crc >> 8) & 0xFF))
-        checkSum = b'\x04' + bytes(chr(crc & 0xFF),'utf-8') + bytes(chr((crc >> 8) & 0xFF),'utf-8')
+        checkSum = b'\x04' + bytes(chr(crc & 0xFF), 'utf-8') + bytes(chr((crc >> 8) & 0xFF), 'utf-8')
         char.write(checkSum, withResponse=True)
         if extension.lower() == "fw":
             self.waitForNotifications(0.5)
@@ -487,7 +495,6 @@ class miband(Peripheral):
                 char_ctrl.write(b'\x16', True)
                 t = time.time()
 
-
     def stop_realtime(self):
         char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
         char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
@@ -528,8 +535,8 @@ class miband(Peripheral):
         trigger = b'\x01\x01' + ts + utc_offset
         self._char_fetch.write(trigger, False)
         self.active = True
-    
-    def get_activity_betwn_intervals(self,start_timestamp, end_timestamp, callback ):
+
+    def get_activity_betwn_intervals(self, start_timestamp, end_timestamp, callback):
         self.end_timestamp = end_timestamp
         self.start_get_previews_data(start_timestamp)
         self.activity_callback = callback
@@ -537,35 +544,36 @@ class miband(Peripheral):
     def enable_music(self):
         self._desc_music_notif.write(b'\x01\x00')
 
-    def writeChunked(self,type,data):
+    def writeChunked(self, type, data):
         MAX_CHUNKLENGTH = 17
         remaining = len(data)
-        count =0
-        while(remaining > 0):
-            copybytes = min(remaining,MAX_CHUNKLENGTH)
-            chunk=b''
+        count = 0
+        while (remaining > 0):
+            copybytes = min(remaining, MAX_CHUNKLENGTH)
+            chunk = b''
             flag = 0
-            if(remaining <= MAX_CHUNKLENGTH):
+            if (remaining <= MAX_CHUNKLENGTH):
                 flag |= 0x80
-                if(count == 0):
+                if (count == 0):
                     flag |= 0x40
-            elif(count>0):
+            elif (count > 0):
                 flag |= 0x40
 
-            chunk+=b'\x00'
-            chunk+= bytes([flag|type])
-            chunk+= bytes([count & 0xff])
-            chunk+= data[(count * MAX_CHUNKLENGTH):(count * MAX_CHUNKLENGTH)+copybytes]
-            count+=1
+            chunk += b'\x00'
+            chunk += bytes([flag | type])
+            chunk += bytes([count & 0xff])
+            chunk += data[(count * MAX_CHUNKLENGTH):(count * MAX_CHUNKLENGTH) + copybytes]
+            count += 1
             self._char_chunked.write(chunk)
-            remaining-=copybytes
+            remaining -= copybytes
 
-    def setTrack(self,track,state):
+    def setTrack(self, track, state):
         self.track = track
         self.pp_state = state
         self.setMusic()
 
-    def setMusicCallback(self,play=None,pause=None,forward=None,backward=None,volumeup=None,volumedown=None,focusin=None,focusout=None):
+    def setMusicCallback(self, play=None, pause=None, forward=None, backward=None, volumeup=None, volumedown=None,
+                         focusin=None, focusout=None):
         if play is not None:
             self._default_music_play = play
         if pause is not None:
@@ -587,18 +595,15 @@ class miband(Peripheral):
         track = self.track
         state = self.pp_state
         # st=b"\x01\x00\x01\x00\x00\x00\x01\x00"
-        #self.writeChunked(3,st)
+        # self.writeChunked(3,st)
         flag = 0x00
-        flag |=0x01
-        length =8
-        if(len(track)>0):
-            length+=len(track.encode('utf-8'))
-            flag |=0x0e
-        buf = bytes([flag])+bytes([state])+bytes([1,0,0,0])+bytes([1,0])
-        if(len(track)>0):
-            buf+=bytes(track,'utf-8')
-            buf+=bytes([0])
-        self.writeChunked(3,buf)
-
-
-
+        flag |= 0x01
+        length = 8
+        if (len(track) > 0):
+            length += len(track.encode('utf-8'))
+            flag |= 0x0e
+        buf = bytes([flag]) + bytes([state]) + bytes([1, 0, 0, 0]) + bytes([1, 0])
+        if (len(track) > 0):
+            buf += bytes(track, 'utf-8')
+            buf += bytes([0])
+        self.writeChunked(3, buf)
