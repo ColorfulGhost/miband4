@@ -2,7 +2,6 @@ from flask import Flask
 from flask_restful import Api, Resource, reqparse
 
 # !/usr/bin/env python3
-
 # This script demonstrates the usage, capability and features of the library.
 
 import argparse
@@ -90,14 +89,14 @@ class MiBand4_Http_Api(Resource):
                     success = True
                 break
             except BTLEDisconnectError:
-                result = 'Ö÷ÈË²»ÔÚ¼Ò£¬ÎŞ·¨²¶»ñÉíÌåÊı¾İ(?§Õ?£»)'
+                result = 'ä¸»äººä¸åœ¨å®¶ï¼Œæ— æ³•æ•è·èº«ä½“æ•°æ®(?Ğ´?ï¼›)'
                 return result, 200
 
         if success:
             binfo = band.get_steps()
-            result += '½ØÖ¹µ±Ç°: ' + binfo['steps'] + '²½'
-            result += 'ÏûºÄ: ' + binfo['fat_burned'] + 'Cal'
-            result += '½ñÈÕÒÆ¶¯¾àÀë: ' + binfo['meters'] + 'M'
+            result += 'æˆªæ­¢å½“å‰: ' + binfo['steps'] + 'æ­¥'
+            result += 'æ¶ˆè€—: ' + binfo['fat_burned'] + 'Cal'
+            result += 'ä»Šæ—¥ç§»åŠ¨è·ç¦»: ' + binfo['meters'] + 'M'
             return result, 200
 
 
